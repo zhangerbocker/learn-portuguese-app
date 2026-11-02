@@ -26,19 +26,24 @@ export interface Session {
 }
 
 /**
- * Priority of a card's item for a new session, lowest first:
+ * Priority of a study item for practice, lowest first:
  * 0 last answered "don't know"; 1 added by hand (from a story or chat) but not yet answered;
  * 2 known but due again; 3 never seen; 4 known and not yet due.
  */
-function priority(progress: Progress, card: string, now: Date): number {
-  const item = progress.items[itemOfCard(card)];
+export function itemPriority(progress: Progress, itemKey: string, now: Date): number {
+  const item = progress.items[itemKey];
   if (!item) return 3;
   if (item.state === "learning") return 0;
   if (item.state === "new") return 1;
   return new Date(item.due).getTime() <= now.getTime() ? 2 : 4;
 }
 
-function shuffled<T>(items: readonly T[], random: () => number): T[] {
+/** The priority of a card's item (see itemPriority). */
+function priority(progress: Progress, card: string, now: Date): number {
+  return itemPriority(progress, itemOfCard(card), now);
+}
+
+export function shuffled<T>(items: readonly T[], random: () => number): T[] {
   const out = [...items];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

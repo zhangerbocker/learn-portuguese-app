@@ -18,6 +18,7 @@ const LevelButton = dynamic(() => import("./LevelButton").then((m) => m.LevelBut
 });
 
 const TABS = [
+  { href: "/today", label: "Today", pt: "Hoje" },
   { href: "/cards", label: "Cards", pt: "Cartões" },
   { href: "/read", label: "Read", pt: "Ler" },
   { href: "/chat", label: "Chat", pt: "Conversar" },
@@ -39,16 +40,16 @@ export function TabBarView({ pathname }: { pathname: string }) {
                   active ? "text-red-700 dark:text-red-400" : "text-stone-500"
                 }`}
               >
-                <span className="font-pt text-lg leading-none">{tab.pt}</span>
+                <span className="font-pt text-base leading-none sm:text-lg">{tab.pt}</span>
                 {tab.label}
               </Link>
             </li>
           );
         })}
-        <li className="w-20 shrink-0">
+        <li className="w-14 shrink-0 sm:w-20">
           <LevelButton className={`${ITEM} text-stone-500`} />
         </li>
-        <li className="w-20 shrink-0">
+        <li className="w-14 shrink-0 sm:w-20">
           <ThemeButton className={`${ITEM} text-stone-500`} />
         </li>
       </ul>
