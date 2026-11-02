@@ -22,6 +22,28 @@ Chat and "New story" call Claude. Put a key in `.env.local` (git-ignored): eithe
 (`PARLEY_API_KEY`, with `PARLEY_MODEL`) or an Anthropic key (`ANTHROPIC_API_KEY`); Parley is used when its
 key is set. Check the key with `npx tsx --env-file=.env.local scripts/check-claude.ts`.
 
+## Daily practice (Hoje)
+
+The app opens on **Hoje** (Today): a ~5-minute lesson of about 12 exercises, built fresh each day from
+the word list, example sentences and stories (no AI, so it's free and works offline).
+
+- **Theme:** chosen automatically. Themes take turns by date (all topics except "Function words"), but a
+  theme with clearly more trouble words (3+ more than the scheduled one) goes first.
+- **Review first:** up to 3 words you keep missing (2+ misses in 30 days), then missed, then due ones.
+- **Theme words:** about 6 words from the theme you're learning or haven't seen, at the lowest
+  switched-on level that still has unlearned words.
+- **Short read:** a story from the theme with 2 questions (whole if it's short, otherwise the first
+  ~120 words with "which of these happens?" questions); tap words for their meaning.
+- **Exercises:** pick the meaning (either direction), fill in the blank (choices include other forms of
+  the same word), and build the sentence from word tiles (no typing, so accents never matter).
+- **Mistakes:** a wrong answer comes back once at the end of the lesson. Only the first answer counts
+  on the word's schedule, so a missed word leads the next lessons until you get it right first time.
+- **Same lesson all day** (it's seeded by the date); "Practice again" builds a new one. A lesson in
+  progress resumes when you come back. Lessons use the same streak as Cards.
+
+Planner: `src/lib/daily.ts` (pure, tested in `daily.test.ts`); lesson state: `src/lib/daily-store.ts`;
+screens: `src/components/today/`.
+
 ## Flashcards
 
 Tap **New session** and choose what to study (Words, Sentences, Grammar, Verbs or your chat Mistakes,

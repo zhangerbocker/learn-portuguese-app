@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Português",
     short_name: "Português",
     description: "Flashcards, reading and chat for Brazilian Portuguese, A1–A2",
-    start_url: "/cards",
+    start_url: "/today",
     display: "standalone",
     background_color: "#f3ede1",
     theme_color: "#c23b22",

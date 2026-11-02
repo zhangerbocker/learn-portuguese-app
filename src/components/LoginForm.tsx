@@ -17,7 +17,7 @@ export function LoginForm() {
     try {
       const result = await logIn(passcode);
       if (result.ok) {
-        router.replace("/cards");
+        router.replace("/today");
         return;
       }
       setError(result.error);
