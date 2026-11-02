@@ -14,9 +14,7 @@ function input(overrides: Partial<LessonInput> = {}): LessonInput {
 }
 const miss = (key: string, at: string) => ({ key, rating: Rating.DontKnow, at });
 const choiceSteps = (steps: Step[]): { options: string[]; answer: number }[] =>
-  steps.flatMap((s): { options: string[]; answer: number }[] =>
-    s.kind === "meaning" || s.kind === "blank" ? [s] : s.kind === "reading" ? s.questions : [],
-  );
+  steps.flatMap((s): { options: string[]; answer: number }[] => (s.kind === "reading" ? s.questions : []));
 
 describe("troubleItems", () => {
   it("lists items missed at least twice in the last 30 days, most missed first", () => {
@@ -88,7 +86,7 @@ describe("planLesson", () => {
     }
   });
 
-  it("gives every choice four distinct options including the answer", () => {
+  it("gives every story question four distinct options including the answer", () => {
     for (const date of ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]) {
       for (const step of choiceSteps(planLesson(input({ date })).steps)) {
         expect(step.options).toHaveLength(4);
@@ -104,22 +102,31 @@ describe("planLesson", () => {
       for (const step of planLesson(input({ date })).steps) {
         if (step.kind !== "blank") continue;
         const word = WORDS.find((w) => `w:${w.id}` === step.item)!;
-        expect(step.before + step.options[step.answer] + step.after).toBe(word.example.pt);
+        expect(step.before + step.answer + step.after).toBe(word.example.pt);
+        expect(word.forms.concat(word.pt).map(lookupForm)).toContain(lookupForm(step.answer));
+        expect(step.hint).toBe(word.pt);
       }
     }
   });
 
-  it("builds sentences from exactly the answer's words plus distractors", () => {
+  it("asks for typed answers: the word with its article, or the whole example sentence", () => {
+    const kinds = new Set<string>();
     for (const date of ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"]) {
       for (const step of planLesson(input({ date })).steps) {
-        if (step.kind !== "build") continue;
-        expect(step.answer.length).toBeLessThanOrEqual(8);
-        const left = [...step.tiles];
-        for (const w of step.answer) left.splice(left.indexOf(w), 1);
-        expect(left.length).toBeLessThanOrEqual(2);
-        expect(left.every((d) => !step.answer.map(lookupForm).includes(lookupForm(d)))).toBe(true);
+        kinds.add(step.kind);
+        if (step.kind === "reading" || step.kind === "blank") continue;
+        const word = WORDS.find((w) => `w:${w.id}` === step.item)!;
+        if (step.kind === "meaning") {
+          expect(step.prompt).toBe(word.english);
+          expect([step.answer, ...step.alternatives]).toContain(word.pt);
+        } else {
+          expect(step.answer).toBe(word.example.pt);
+          expect(step.en).toBe(word.example.en);
+          expect(step.answer.split(/\s+/).length).toBeLessThanOrEqual(10);
+        }
       }
     }
+    expect(kinds).toEqual(new Set(["meaning", "blank", "translate", "reading"]));
   });
 
   it("keeps to the switched-on levels", () => {

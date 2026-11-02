@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
-/** A dismissible panel anchored above the tab bar; Escape or tapping the backdrop closes it. */
+/**
+ * A dismissible panel anchored above the tab bar; Escape or tapping the backdrop closes it.
+ * Rendered at the end of <body>, so it can be opened from inside a sentence or paragraph.
+ */
 export function BottomSheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -10,7 +14,7 @@ export function BottomSheet({ onClose, children }: { onClose: () => void; childr
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/30" onClick={onClose}>
       <div
         role="dialog"
@@ -19,6 +23,7 @@ export function BottomSheet({ onClose, children }: { onClose: () => void; childr
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

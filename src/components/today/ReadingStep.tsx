@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { Step } from "@/lib/daily";
 import { LIBRARY, markRead } from "@/lib/reading";
-import type { StoryToken } from "@/lib/story";
-import { LEVEL_NAMES, withArticle, WORDS_BY_ID } from "@/lib/words";
-import { BottomSheet } from "../read/BottomSheet";
+import { LEVEL_NAMES } from "@/lib/words";
+import { WordPanel, type WordTap } from "../WordPanel";
 import { Choices } from "./Choices";
 import { Feedback } from "./Feedback";
 
@@ -13,7 +12,7 @@ type ReadingStepData = Extract<Step, { kind: "reading" }>;
 export function ReadingStep({ step, onDone }: { step: ReadingStepData; onDone: (right: number, asked: number) => void }) {
   const story = LIBRARY.find((s) => s.id === step.storyId);
   const [picks, setPicks] = useState<(number | null)[]>(step.questions.map(() => null));
-  const [token, setToken] = useState<StoryToken | null>(null);
+  const [tap, setTap] = useState<WordTap | null>(null);
   const [showEn, setShowEn] = useState(false);
   if (!story) {
     // The story was removed since the lesson was planned: skip it without counting.
@@ -23,7 +22,6 @@ export function ReadingStep({ step, onDone }: { step: ReadingStepData; onDone: (
   const whole = step.sentenceCount >= story.sentences.length;
   const answered = picks.every((p) => p !== null);
   const right = picks.filter((p, i) => p === step.questions[i].answer).length;
-  const word = token?.wordId !== undefined ? WORDS_BY_ID.get(token.wordId) : undefined;
 
   return (
     <div className="flex flex-col gap-5">
@@ -41,7 +39,13 @@ export function ReadingStep({ step, onDone }: { step: ReadingStepData; onDone: (
           <span key={si}>
             {sentence.tokens.map((t, ti) =>
               t.en || t.wordId !== undefined ? (
-                <span key={ti} role="button" tabIndex={0} onClick={() => setToken(t)} className="cursor-pointer rounded hover:bg-stone-200/70 dark:hover:bg-stone-800">
+                <span
+                  key={ti}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setTap({ text: t.text, wordId: t.wordId, en: t.en, sentence: sentence.tokens.map((x) => x.text).join("") })}
+                  className="cursor-pointer rounded hover:bg-stone-200/70 dark:hover:bg-stone-800"
+                >
                   {t.text}
                 </span>
               ) : (
@@ -82,17 +86,7 @@ export function ReadingStep({ step, onDone }: { step: ReadingStepData; onDone: (
         </Feedback>
       )}
 
-      {token && (
-        <BottomSheet onClose={() => setToken(null)}>
-          <p className="font-pt text-3xl">{token.text}</p>
-          {token.en && <p className="mt-1 text-lg">{token.en}</p>}
-          {word && (
-            <p className="mt-1 text-sm text-stone-500">
-              <span className="font-pt">{withArticle(word)}</span> · {word.english}
-            </p>
-          )}
-        </BottomSheet>
-      )}
+      {tap && <WordPanel tap={tap} onClose={() => setTap(null)} />}
     </div>
   );
 }

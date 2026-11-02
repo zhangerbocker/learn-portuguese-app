@@ -23,24 +23,30 @@ const TROUBLE_DAYS = 30;
 /** Stories this short are shown whole with their own questions; longer ones are excerpted. */
 const WHOLE_STORY_WORDS = 160;
 const EXCERPT_WORDS = 120;
-/** Build-the-sentence uses example sentences of at most this many words. */
-const BUILD_MAX_WORDS = 8;
+/** Translate-the-sentence uses example sentences of at most this many words. */
+const TRANSLATE_MAX_WORDS = 10;
 const DAY_MS = 86_400_000;
 
 /** Where a step came from: the review block, today's theme, or the short read. */
 export type StepSource = "review" | "theme" | "reading";
 
+/**
+ * One exercise. Word exercises are typed in Portuguese (checked like Cards: case and
+ * punctuation ignored, accents optional per the learner's setting); the read keeps
+ * multiple-choice questions.
+ */
 export type Step =
   | {
       kind: "meaning";
       source: StepSource;
       /** The word's study item (w:<id>), graded by the answer. */
       item: string;
-      /** pt: Portuguese prompt, English choices; en: the reverse. */
-      direction: "pt" | "en";
+      /** The English to put into Portuguese, and its part of speech as a hint. */
       prompt: string;
-      options: string[];
-      answer: number;
+      hint: string;
+      /** The word as learned (nouns with their article); the bare word is accepted too. */
+      answer: string;
+      alternatives: string[];
     }
   | {
       kind: "blank";
@@ -50,19 +56,17 @@ export type Step =
       before: string;
       after: string;
       en: string;
-      options: string[];
-      answer: number;
+      /** The missing form, and the dictionary form shown as a hint (ir for "fui"). */
+      answer: string;
+      hint: string;
     }
   | {
-      kind: "build";
+      kind: "translate";
       source: StepSource;
       item: string;
-      /** The English to translate. */
+      /** The English sentence to translate, and the Portuguese expected. */
       en: string;
-      /** The Portuguese words in order (punctuation dropped). */
-      answer: string[];
-      /** The answer's words plus a couple of distractors, shuffled. */
-      tiles: string[];
+      answer: string;
     }
   | {
       kind: "reading";
@@ -185,7 +189,6 @@ const sentenceWords = (text: string) =>
     .replace(/[^\p{L}\p{M}\d\s'-]/gu, " ")
     .split(/\s+/)
     .filter(Boolean);
-const capitalized = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 interface ExerciseContext {
   words: readonly Word[];
@@ -193,34 +196,39 @@ interface ExerciseContext {
   random: () => number;
 }
 
-/** Words to draw distractors from: same part of speech, same theme first, then the rest. */
-function similar(word: Word, ctx: ExerciseContext): Word[] {
-  const others = ctx.words.filter((w) => w.id !== word.id && posOf(w) === posOf(word));
-  return [...shuffled(others.filter((w) => w.topic === word.topic), ctx.random), ...shuffled(others.filter((w) => w.topic !== word.topic), ctx.random)];
-}
+const POS_NAMES: Record<string, string> = {
+  "n.": "noun",
+  "v.": "verb",
+  "adj.": "adjective",
+  "adv.": "adverb",
+  "prep.": "preposition",
+  "conj.": "conjunction",
+  "pron.": "pronoun",
+  "art.": "article",
+  "num.": "number",
+  "expr.": "expression",
+  "interj.": "interjection",
+};
 
-function meaningStep(word: Word, source: StepSource, direction: "pt" | "en", ctx: ExerciseContext): Step | null {
-  const pool = similar(word, ctx);
-  const [prompt, answer, distractors] =
-    direction === "pt"
-      ? [withArticle(word), word.english, pick(pool.map((w) => w.english), [word.english], 3)]
-      : [word.english, withArticle(word), pick(pool.map(withArticle), [withArticle(word)], 3)];
-  const c = choices(answer, distractors, ctx.random);
-  return c && { kind: "meaning", source, item: itemKey("word", word.id), direction, prompt, ...c };
+function meaningStep(word: Word, source: StepSource): Step {
+  const full = withArticle(word);
+  const pos = POS_NAMES[posOf(word)] ?? posOf(word);
+  const gender = word.gender === "m" ? ", masculine" : word.gender === "f" ? ", feminine" : "";
+  return {
+    kind: "meaning",
+    source,
+    item: itemKey("word", word.id),
+    prompt: word.english,
+    hint: pos + gender,
+    answer: full,
+    alternatives: full === word.pt ? [] : [word.pt],
+  };
 }
 
 function blankStep(word: Word, source: StepSource, ctx: ExerciseContext): Step | null {
   const tokens = segment(word.example.pt, ctx.lexicon);
   const at = tokens.findIndex((t) => t.wordId === word.id);
   if (at < 0) return null;
-  const form = tokens[at].text;
-  const cap = form[0] === form[0].toUpperCase() && form[0] !== form[0].toLowerCase();
-  // Other forms of the same word first (fui / foi / vai), then same-type words.
-  const ownForms = [word.pt, ...word.forms].filter((f) => !f.includes(" "));
-  const pool = [...shuffled(ownForms, ctx.random), ...similar(word, ctx).map((w) => w.pt).filter((f) => !f.includes(" "))];
-  const distractors = pick(pool.map((f) => (cap ? capitalized(f) : f)), [form], 3);
-  const c = choices(form, distractors, ctx.random);
-  if (!c) return null;
   return {
     kind: "blank",
     source,
@@ -228,29 +236,20 @@ function blankStep(word: Word, source: StepSource, ctx: ExerciseContext): Step |
     before: tokens.slice(0, at).map((t) => t.text).join(""),
     after: tokens.slice(at + 1).map((t) => t.text).join(""),
     en: word.example.en,
-    ...c,
+    answer: tokens[at].text,
+    hint: word.pt,
   };
 }
 
-function buildStep(word: Word, source: StepSource, ctx: ExerciseContext): Step | null {
-  const answer = sentenceWords(word.example.pt);
-  if (answer.length < 3 || answer.length > BUILD_MAX_WORDS) return null;
-  const distractors = pick(
-    similar(word, ctx).map((w) => w.pt).filter((p) => !p.includes(" ")),
-    answer,
-    2,
-  );
-  return { kind: "build", source, item: itemKey("word", word.id), en: word.example.en, answer, tiles: shuffled([...answer, ...distractors], ctx.random) };
+function translateStep(word: Word, source: StepSource): Step | null {
+  const length = sentenceWords(word.example.pt).length;
+  if (length < 3 || length > TRANSLATE_MAX_WORDS) return null;
+  return { kind: "translate", source, item: itemKey("word", word.id), en: word.example.en, answer: word.example.pt };
 }
 
 /** An exercise for a word, trying the preferred kind first and falling back to the others. */
 function exerciseFor(word: Word, source: StepSource, preferred: number, ctx: ExerciseContext): Step | null {
-  const makers = [
-    () => meaningStep(word, source, "pt", ctx),
-    () => blankStep(word, source, ctx),
-    () => buildStep(word, source, ctx),
-    () => meaningStep(word, source, "en", ctx),
-  ];
+  const makers = [() => meaningStep(word, source), () => blankStep(word, source, ctx), () => translateStep(word, source)];
   for (let i = 0; i < makers.length; i++) {
     const step = makers[(preferred + i) % makers.length]();
     if (step) return step;
@@ -327,7 +326,7 @@ export function planLesson(input: LessonInput): Lesson {
     .sort((a, b) => Number(!notKnown(a)) - Number(!notKnown(b)) || itemPriority(progress, wordItem(a), now) - itemPriority(progress, wordItem(b), now) || b.level - a.level)
     .slice(0, (THEME_STEPS + REVIEW_STEPS) * 2); // spare words in case some can't make an exercise
 
-  const kinds = shuffled([0, 1, 2, 3, 0, 1, 2, 3, 1, 2], random);
+  const kinds = shuffled([0, 1, 2, 0, 1, 2, 0, 1, 2], random);
   let k = 0;
   const steps = (list: Word[], source: StepSource, limit: number) =>
     list.flatMap((w) => exerciseFor(w, source, kinds[k++ % kinds.length], ctx) ?? []).slice(0, limit);
