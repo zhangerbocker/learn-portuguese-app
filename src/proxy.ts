@@ -25,6 +25,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Static build assets need no check; everything else goes through access().
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  // Static build assets and Vercel's analytics script/endpoint (/_vercel/insights) need no check, so
+  // visits to the login screen are counted too; everything else goes through access().
+  matcher: ["/((?!_next/static|_next/image|_vercel).*)"],
 };

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
         {children}
         <ServiceWorker />
+        {/* Vercel Web Analytics: cookieless page-view counts; only sends data on Vercel deployments. */}
+        <Analytics />
       </body>
     </html>
   );
