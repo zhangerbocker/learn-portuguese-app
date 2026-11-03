@@ -9,10 +9,8 @@ import { gradeItem, Rating } from "@/lib/srs";
 import { streak } from "@/lib/stats";
 import { LEVEL_NAMES, withArticle, WORDS, WORDS_BY_ID } from "@/lib/words";
 import { useActiveLevels, useProgress, useReadIds } from "../useSettings";
-import { BlankStep } from "./BlankStep";
-import { BuildStep } from "./BuildStep";
-import { MeaningStep } from "./MeaningStep";
 import { ReadingStep } from "./ReadingStep";
+import { BlankStep, MeaningStep, TranslateStep } from "./TypedSteps";
 
 const kicker = "font-mono text-[11px] uppercase tracking-[0.18em] text-red-700 dark:text-red-400";
 const primary = "rounded-full bg-red-700 py-3 font-medium text-white hover:bg-red-800 dark:bg-red-500 dark:hover:bg-red-400";
@@ -108,7 +106,7 @@ export function TodayApp() {
         {retry && <p className="-mb-2 text-xs text-stone-500">One more try at one you missed</p>}
         {step.kind === "meaning" && <MeaningStep key={key} step={step} onDone={onStepDone} />}
         {step.kind === "blank" && <BlankStep key={key} step={step} onDone={onStepDone} />}
-        {step.kind === "build" && <BuildStep key={key} step={step} onDone={onStepDone} />}
+        {step.kind === "translate" && <TranslateStep key={key} step={step} onDone={onStepDone} />}
         {step.kind === "reading" && <ReadingStep key={key} step={step} onDone={onStepDone} />}
       </div>
     );
@@ -199,7 +197,7 @@ function TodayHome({
               ))}
             </p>
           )}
-          <p className="text-xs text-stone-500">{exerciseCount(lesson)} exercises · pick the meaning, fill in the blank, build the sentence, read</p>
+          <p className="text-xs text-stone-500">{exerciseCount(lesson)} exercises · say it in Portuguese, fill in the blank, translate, read</p>
         </section>
       )}
 

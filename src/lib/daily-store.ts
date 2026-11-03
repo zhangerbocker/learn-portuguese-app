@@ -56,7 +56,7 @@ const SavedPractice = z.object({
     date: z.string(),
     topic: z.enum(TOPICS),
     level: LevelSchema,
-    steps: z.array(z.object({ kind: z.enum(["meaning", "blank", "build", "reading"]) }).passthrough()),
+    steps: z.array(z.object({ kind: z.enum(["meaning", "blank", "translate", "reading"]) }).passthrough()),
   }),
   round: z.number().int().min(0),
   queue: z.array(z.number().int().min(0)),

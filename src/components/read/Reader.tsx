@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { BottomSheet } from "./BottomSheet";
+import { WordPanel } from "../WordPanel";
 import { Questions } from "./Questions";
 import { itemKey } from "@/lib/deck";
 import { findStory, loadCustomStories, markRead, wordStatus } from "@/lib/reading";
@@ -11,11 +12,11 @@ import { useProgress } from "../useSettings";
 import { newItem, type Progress } from "@/lib/srs";
 import type { StorySentence, StoryToken } from "@/lib/story";
 import { speakPortuguese } from "@/lib/speech";
-import { LEVEL_NAMES, withArticle, WORDS_BY_ID } from "@/lib/words";
+import { LEVEL_NAMES, WORDS_BY_ID } from "@/lib/words";
 
 const LONG_PRESS_MS = 450;
 
-type Sheet = { kind: "word"; token: StoryToken } | { kind: "sentence"; sentence: StorySentence } | null;
+type Sheet = { kind: "word"; token: StoryToken; sentence: StorySentence } | { kind: "sentence"; sentence: StorySentence } | null;
 
 function sentenceText(s: StorySentence): string {
   return s.tokens.map((t) => t.text).join("");
@@ -55,9 +56,9 @@ export function Reader({ id }: { id: string }) {
     pressTimer.current = null;
   }
 
-  function tapToken(token: StoryToken) {
+  function tapToken(token: StoryToken, sentence: StorySentence) {
     if (longPressed.current) return; // the long press already opened the sentence
-    if (token.en || token.wordId !== undefined) setSheet({ kind: "word", token });
+    if (token.en || token.wordId !== undefined) setSheet({ kind: "word", token, sentence });
   }
 
   function addToFlashcards(wordId: number) {
@@ -115,8 +116,8 @@ export function Reader({ id }: { id: string }) {
                   key={ti}
                   role="button"
                   tabIndex={0}
-                  onClick={() => tapToken(token)}
-                  onKeyDown={(e) => e.key === "Enter" && tapToken(token)}
+                  onClick={() => tapToken(token, sentence)}
+                  onKeyDown={(e) => e.key === "Enter" && tapToken(token, sentence)}
                   className={`cursor-pointer rounded hover:bg-stone-200/70 dark:hover:bg-stone-800 ${
                     status && status !== "known" ? "underline decoration-amber-500/70 decoration-dotted underline-offset-[6px]" : ""
                   }`}
@@ -154,9 +155,12 @@ export function Reader({ id }: { id: string }) {
       </button>
 
       {sheet?.kind === "word" && (
-        <BottomSheet onClose={closeSheet}>
-          <WordSheet token={sheet.token} progress={progress} onAdd={addToFlashcards} />
-        </BottomSheet>
+        <WordPanel
+          tap={{ text: sheet.token.text, wordId: sheet.token.wordId, en: sheet.token.en, sentence: sentenceText(sheet.sentence) }}
+          onClose={closeSheet}
+        >
+          <FlashcardStatus token={sheet.token} progress={progress} onAdd={addToFlashcards} />
+        </WordPanel>
       )}
       {sheet?.kind === "sentence" && (
         <BottomSheet onClose={closeSheet}>
@@ -178,51 +182,28 @@ export function Reader({ id }: { id: string }) {
   );
 }
 
-function WordSheet({ token, progress, onAdd }: { token: StoryToken; progress: Progress; onAdd: (wordId: number) => void }) {
+/** Whether a story word is in the flashcards, with a button to add it. */
+function FlashcardStatus({ token, progress, onAdd }: { token: StoryToken; progress: Progress; onAdd: (wordId: number) => void }) {
   const word = token.wordId !== undefined ? WORDS_BY_ID.get(token.wordId) : undefined;
-  const status = token.wordId !== undefined ? wordStatus(progress, token.wordId) : undefined;
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-3">
-        <span className="font-pt text-4xl">{token.text}</span>
-        <button
-          type="button"
-          aria-label="Play word"
-          onClick={() => speakPortuguese(token.text)}
-          className="rounded-full p-1 text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800"
-        >
-          ▶
-        </button>
-      </div>
-      <p className="text-lg">{token.en ?? word?.english}</p>
-      {word && (
-        <p className="text-sm text-stone-500">
-          Dictionary: <span className="font-pt">{withArticle(word)}</span> · {word.english}
-        </p>
-      )}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="text-xs text-stone-500">{word ? `${LEVEL_NAMES[word.level]} · ${word.topic}` : "Name or extra word"}</span>
-        {word &&
-          (status === "new" ? (
-            <button
-              type="button"
-              onClick={() => onAdd(word.id)}
-              className="rounded-full bg-red-700 px-4 py-1.5 text-sm text-white dark:bg-red-500"
-            >
-              Add to flashcards
-            </button>
-          ) : (
-            <span
-              className={`rounded-full px-3 py-1 text-xs ${
-                status === "known"
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                  : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-              }`}
-            >
-              {status === "known" ? "Known" : "In your flashcards"}
-            </span>
-          ))}
-      </div>
-    </div>
+  if (!word) return null;
+  const status = wordStatus(progress, word.id);
+  return status === "new" ? (
+    <button
+      type="button"
+      onClick={() => onAdd(word.id)}
+      className="self-start rounded-full bg-red-700 px-4 py-1.5 text-sm text-white dark:bg-red-500"
+    >
+      Add to flashcards
+    </button>
+  ) : (
+    <span
+      className={`self-start rounded-full px-3 py-1 text-xs ${
+        status === "known"
+          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+          : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+      }`}
+    >
+      {status === "known" ? "Known" : "In your flashcards"}
+    </span>
   );
 }

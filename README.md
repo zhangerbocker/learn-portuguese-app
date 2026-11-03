@@ -34,8 +34,15 @@ the word list, example sentences and stories (no AI, so it's free and works offl
   switched-on level that still has unlearned words.
 - **Short read:** a story from the theme with 2 questions (whole if it's short, otherwise the first
   ~120 words with "which of these happens?" questions); tap words for their meaning.
-- **Exercises:** pick the meaning (either direction), fill in the blank (choices include other forms of
-  the same word), and build the sentence from word tiles (no typing, so accents never matter).
+- **Exercises (typed):** say an English word in Portuguese (nouns with or without the article), fill in
+  the missing form in a sentence (its dictionary form is the hint), and translate a sentence. Answers
+  are checked like Cards (case and punctuation ignored; accents optional per the setting), and a wrong
+  answer can be counted as right when it means the same. The read keeps multiple-choice questions.
+- **Tap any word** in an answer or story for its meaning, dictionary form, other forms (verb tables), a
+  hand-written usage note for tricky words (`data/word-notes.json`: lhe, se, a gente, contractions…)
+  and **Ask the tutor**: an AI explanation of the word in that sentence, with follow-up questions
+  (`POST /api/explain`, about 0.4¢ each; guests' questions share their chat budget). The Reading tab's
+  word panel has the same notes and tutor.
 - **Mistakes:** a wrong answer comes back once at the end of the lesson. Only the first answer counts
   on the word's schedule, so a missed word leads the next lessons until you get it right first time.
 - **Same lesson all day** (it's seeded by the date); "Practice again" builds a new one. A lesson in
