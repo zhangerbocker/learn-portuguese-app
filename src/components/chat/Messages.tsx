@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SpeakButton } from "../cards/SpeakButton";
 import { Correction } from "../Correction";
 import { countedChanges, type MessageCheck } from "@/lib/chat";
 import type { Word } from "@/lib/words";
@@ -11,15 +12,18 @@ export function PartnerMessage({ text, en }: { text: string; en: string }) {
         <p className="font-pt text-lg leading-relaxed">{text}</p>
         {open && <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">{en}</p>}
       </div>
-      <button
-        type="button"
-        aria-label={open ? "Hide English" : "Show English"}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={`mt-1.5 h-7 w-7 shrink-0 rounded-full text-sm ${open ? "bg-red-700 text-white dark:bg-red-500" : "bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300"}`}
-      >
-        ?
-      </button>
+      <div className="flex flex-col items-center">
+        <button
+          type="button"
+          aria-label={open ? "Hide English" : "Show English"}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className={`mt-1.5 h-7 w-7 shrink-0 rounded-full text-sm ${open ? "bg-red-700 text-white dark:bg-red-500" : "bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300"}`}
+        >
+          ?
+        </button>
+        <SpeakButton text={text} label="Read aloud" />
+      </div>
     </div>
   );
 }

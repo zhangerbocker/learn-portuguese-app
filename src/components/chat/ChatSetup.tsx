@@ -9,10 +9,12 @@ export function ChatSetup({
   starting,
   me,
   onStart,
+  onPronounce,
 }: {
   starting: boolean;
   me: Me | null;
   onStart: (level: Level, scenario: string) => void;
+  onPronounce: (level: Level) => void;
 }) {
   const outOfBudget = me?.role === "guest" && me.budget !== null && !me.budget.allowed;
   const levels = useActiveLevels();
@@ -37,7 +39,9 @@ export function ChatSetup({
           ))}
         </div>
       </div>
-      <p className="text-sm text-stone-500">Pick a situation. Write in Portuguese (English for words you don&apos;t know is fine) and every message gets checked.</p>
+      <p className="text-sm text-stone-500">
+        Pick a situation. Write or speak in Portuguese (English for words you don&apos;t know is fine) and every message gets checked.
+      </p>
       <BudgetNote me={me} />
       <ul className="flex flex-col gap-2">
         {SCENARIOS.map((s) => (
@@ -54,6 +58,14 @@ export function ChatSetup({
           </li>
         ))}
       </ul>
+      <button
+        type="button"
+        onClick={() => onPronounce(level)}
+        className="w-full rounded-[20px] border border-dashed border-stone-300 p-4 text-left transition hover:border-red-700 dark:border-stone-700 dark:hover:border-red-400"
+      >
+        <span className="block font-medium">Pronunciation practice</span>
+        <span className="block text-sm text-stone-500">Read sentences aloud and see which words were understood. Free, no AI.</span>
+      </button>
     </div>
   );
 }
