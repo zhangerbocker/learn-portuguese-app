@@ -104,6 +104,16 @@ partner replies in simple Brazilian Portuguese within your level's words; every 
 checked, mistakes (including missing accents and gender agreement) become flashcards, and English words
 you used for gaps are looked up. "End chat" shows a summary.
 
+**Speaking.** The microphone button next to Send turns speech into text in the message box (added after
+anything typed), so you can fix it before sending. When a message was spoken, the reply is read aloud;
+every reply also has a speaker button. **Pronunciation practice** (at the bottom of the scenario list)
+shows 10 example sentences at your level (from words you're studying first): read each aloud and the words
+that were understood turn green. It uses no AI and doesn't change your flashcards.
+
+Speech recognition is the browser's built-in one (free; Chrome, Edge and Safari, not Firefox; the audio
+is processed by Google or Apple). The engine sits behind the `Recognizer` interface in
+`src/lib/recognizer.ts`, so a paid one such as Whisper can replace `browserRecognizer` there.
+
 **Owner and guests.** Logging in with the owner passcode gives unlimited chat, "New story" and synced
 progress. The shared guest passcode gives a chat budget ($0.25 per login, $5 for all guests together),
 shown on the chat screen, and keeps progress on the guest's device. See `docs/deploy.md` → Guests.

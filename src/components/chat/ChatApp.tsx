@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChatSetup } from "./ChatSetup";
+import { PronunciationPractice } from "./PronunciationPractice";
+import { MicButton } from "../MicButton";
+import { useDictation } from "../useDictation";
+import { speakPortuguese } from "@/lib/speech";
 import { ChatSummaryView } from "./ChatSummaryView";
 import { PartnerMessage, UserMessage, type GapWord } from "./Messages";
 import { BudgetNote } from "./BudgetNote";
@@ -26,6 +30,10 @@ import { findWord, LEVEL_NAMES, WORDS, type Level } from "@/lib/words";
 import { useProgress, useSettings } from "../useSettings";
 
 
+function joinDraft(typed: string, spoken: string): string {
+  return [typed.trim(), spoken.trim()].filter(Boolean).join(" ");
+}
+
 export function ChatApp() {
   // Rendered client-only (see ChatLoader), so browser storage is available at init.
   const [conversation, setConversation] = useState<Conversation | null>(() => loadConversation(window.localStorage));
@@ -39,6 +47,22 @@ export function ChatApp() {
     if (budget) setMe({ role: "guest", budget });
   }
   const [draft, setDraft] = useState("");
+  const [practice, setPractice] = useState<Level | null>(null);
+  // Speech fills the message box (added after anything already typed) so it can be fixed before sending.
+  const draftBeforeSpeech = useRef("");
+  // When a message was spoken, the reply is read aloud too.
+  const spoken = useRef(false);
+  // Sending while still listening sends what was heard so far; the late final result is dropped.
+  const sentWhileListening = useRef(false);
+  const dictation = useDictation((text) => {
+    if (sentWhileListening.current) {
+      sentWhileListening.current = false;
+      return;
+    }
+    setDraft(joinDraft(draftBeforeSpeech.current, text));
+    spoken.current = true;
+  });
+  const shownDraft = dictation.listening ? joinDraft(draftBeforeSpeech.current, dictation.text) : draft;
   const [pending, setPending] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<{ message: string; retry: () => void } | null>(null);
@@ -84,6 +108,12 @@ export function ChatApp() {
     if (!conversation || pending !== null) return;
     const message = text.trim();
     if (!message) return;
+    const readReply = spoken.current || dictation.listening;
+    if (dictation.listening) {
+      sentWhileListening.current = true;
+      dictation.stop();
+    }
+    spoken.current = false;
     setPending(message);
     setDraft("");
     setError(null);
@@ -93,6 +123,7 @@ export function ChatApp() {
       const now = new Date();
       const mistake = mistakeFromTurn(message, turn.check, `chat-${now.getTime()}`, localDay(now), accentsOptional);
       if (mistake) addMistake(window.localStorage, mistake);
+      if (readReply) speakPortuguese(turn.partner.reply);
       update({
         ...conversation,
         messages: [
@@ -135,10 +166,13 @@ export function ChatApp() {
     </div>
   );
 
+  if (!conversation && practice !== null) {
+    return <PronunciationPractice level={practice} onBack={() => setPractice(null)} />;
+  }
   if (!conversation) {
     return (
       <div className="flex flex-col gap-4">
-        <ChatSetup starting={starting} me={me} onStart={(level, scenario) => void start(level, scenario)} />
+        <ChatSetup starting={starting} me={me} onStart={(level, scenario) => void start(level, scenario)} onPronounce={setPractice} />
         {starting && <p className="text-center text-sm text-stone-500">Starting the conversation…</p>}
         {errorBanner}
       </div>
@@ -200,33 +234,54 @@ export function ChatApp() {
       </div>
 
       {errorBanner}
+      {dictation.error && !dictation.listening && (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          {dictation.error}
+        </p>
+      )}
       <BudgetNote me={me} compact />
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void send(draft);
+          void send(shownDraft);
         }}
         className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex items-end gap-2 bg-stone-50 pt-1 dark:bg-stone-950"
       >
         <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          value={shownDraft}
+          readOnly={dictation.listening}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (!e.target.value.trim()) spoken.current = false;
+          }}
           onKeyDown={(e) => {
             // Enter sends; Shift+Enter (and Enter while an IME is composing) doesn't.
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              void send(draft);
+              void send(shownDraft);
             }
           }}
           rows={1}
           maxLength={MAX_MESSAGE_CHARS}
-          placeholder="Responda em português…"
+          placeholder={dictation.listening ? "Fale agora…" : "Em português…"}
           aria-label="Your message"
           className="font-pt max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-stone-300 bg-white px-4 py-2.5 text-lg dark:border-stone-700 dark:bg-stone-900"
         />
+        {dictation.supported && (
+          <MicButton
+            listening={dictation.listening}
+            disabled={pending !== null || outOfBudget}
+            onStart={() => {
+              draftBeforeSpeech.current = draft;
+              sentWhileListening.current = false;
+              dictation.start();
+            }}
+            onStop={dictation.stop}
+          />
+        )}
         <button
           type="submit"
-          disabled={pending !== null || !draft.trim() || outOfBudget}
+          disabled={pending !== null || !shownDraft.trim() || outOfBudget}
           className="h-11 shrink-0 rounded-full px-4 font-medium bg-red-700 text-white hover:bg-red-800 dark:bg-red-500 dark:text-white dark:hover:bg-red-400 disabled:opacity-40"
         >
           Send
